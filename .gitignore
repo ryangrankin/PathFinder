@@ -1,0 +1,10 @@
+# Build files
+build/
+cmake-build-*/
+
+# macOS
+.DS_Store
+
+# Editor files
+.vscode/
+*.swp
