@@ -134,6 +134,9 @@ int main() {
 				animationClock.restart();
 			} else if ( key->code == sf::Keyboard::Key::R) {
 				path.clear();
+				visitedOrder.clear();
+				animationIndex = 0;
+				isAnimating = false;
 			}
 		}
 
