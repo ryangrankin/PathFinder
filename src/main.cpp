@@ -171,6 +171,131 @@ std::vector<std::pair<int, int>> dijkstra(
 	return path;
 }
 
+// A* pathfinding algorithm
+std::vector<std::pair<int, int>> astar(
+	const std::vector<std::vector<int>>& grid,
+	int startRow, int startCol,
+	int endRow, int endCol,
+	std::vector<std::pair<int, int>>& visitedOrder
+){
+	int rows = grid.size();
+	int cols = grid[0].size();
+
+	const int INF = 1000000000;
+
+	//lowest known movement cost from start to end cell
+	std::vector<std::vector<int>> gScore(
+		rows, std::vector<int>(cols, INF)
+	);
+
+	//track parents to reconstruct the final path
+	std::vector<std::vector<std::pair<int, int>>> parent(
+		rows, std::vector<std::pair<int, int>>(cols, {-1, -1})
+	);
+
+	//manhattan distance heuristic 
+	auto heuristic = [&] (int row, int col) {
+		return std::abs(row - endRow) + std::abs(col - endCol);
+	};
+
+	gScore[startRow][startCol] = 0;
+
+	//each entry stores {fScore, {row, col}}
+	using Node = std::pair<int, std::pair<int, int>>;
+
+	//min-priority queue: explore lowest estimated total cost first 
+	std::priority_queue<
+		Node,
+		std::vector<Node>,
+		std::greater<Node>
+	> pq;
+
+	//start w the heuristic distance to the destination
+	pq.push({
+		heuristic(startRow, startCol),
+		{startRow, startCol}
+	});
+
+	//four possible movement directions 
+	int dr[] = {-1, 1, 0, 0};
+	int dc[] = {0, 0, -1, 1};
+
+	//explore cells until the queue is empty 
+	while (!pq.empty()) {
+	
+		auto [fScore, position] = pq.top();
+		pq.pop();
+
+		auto [row, col] = position;
+
+		//skip outdated queries
+		if (fScore != gScore[row][col] + heuristic(row, col)) {
+			continue;
+		}
+
+		//record explored cells for animation
+		visitedOrder.push_back({row, col});
+
+		//stop when we reach the destination
+		if (row == endRow && col == endCol) {
+			break;
+		}
+
+		//check all four neighboring cells 
+		for (int i=0; i <4; i++) {
+			int nr = row + dr[i];
+			int nc = col + dc[i];
+
+			//stay inside grid and avoid walls
+			if (nr >= 0 && nr < rows &&
+				nc >= 0 && nc < cols &&
+				grid[nr][nc] != 1) {
+				
+				//weighted terrain costs 5, normals terrain costs 1
+				int moveCost = (grid[nr][nc]==2) ? 5 : 1;
+
+				int newGScore = gScore[row][col] + moveCost;
+
+				//update if we found a cheaper route
+				if (newGScore < gScore[nr][nc]) {
+					gScore[nr][nc] = newGScore;
+					parent[nr][nc] = {row, col};
+	
+					int newFScore = newGScore + heuristic(nr, nc);
+
+					pq.push({newFScore, {nr, nc}});
+				}
+			}
+		}
+	}
+
+	std::vector<std::pair<int, int>> path;
+
+	//return an empty path if destination unreachable
+	if (gScore[endRow][endCol] == INF) {
+		return path;
+	}
+
+	int row = endRow;
+	int col = endCol;
+
+	//follow parent pointers back to start 
+	while (row != startRow || col != startCol) {
+		path.push_back({row, col});
+		
+		auto [pr, pc] = parent[row][col];
+
+		row = pr;
+		col = pc;
+	}
+
+	//reverse to ger start to end destination order
+	std::reverse(path.begin(), path.end());
+	
+	return path;
+
+}
+
 int main() {
 	const int CELL_SIZE = 40;
 	const int ROWS = 15;
@@ -221,6 +346,8 @@ int main() {
 				algorithm = 0; // select BFS
 			} else if (key->code == sf::Keyboard::Key::D) {
 				algorithm = 1; //select Dijkstra
+			} else if (key->code == sf::Keyboard::Key::A) {
+				algorithm = 2; // select A*
 			} else if (key->code == sf::Keyboard::Key::W) {
 				mode = 0;
 			} else if (key->code == sf::Keyboard::Key::S) {
@@ -236,6 +363,8 @@ int main() {
 					path = bfs(grid, startRow, startCol, endRow, endCol, visitedOrder);
 				} else if (algorithm == 1 ){
 					path = dijkstra(grid, startRow, startCol, endRow, endCol, visitedOrder);
+				} else if (algorithm == 2){
+					path = astar(grid, startRow, startCol, endRow, endCol, visitedOrder);
 				}				
 	
 				animationIndex = 0;
@@ -342,7 +471,7 @@ int main() {
 					) != visitedOrder.begin() + animationIndex) {
 					cell.setFillColor(sf::Color(65, 145, 220));
 
-				} else {
+				} else if (grid[row][col] == 2) {
 					cell.setFillColor(sf::Color(185, 120, 55));
 				} else {
 					cell.setFillColor(sf::Color(45, 55, 75));
