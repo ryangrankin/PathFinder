@@ -154,7 +154,11 @@ int main() {
 					int row = y / CELL_SIZE;
 
 					if (row < ROWS && col < COLS) {
+						//clear existing search when grid changes
 						path.clear();
+						visitedOrder.clear();
+						animationIndex = 0;
+						isAnimating = false;
 
 						if (mode == 1) {
 							if (row != endRow || col != endCol) {
