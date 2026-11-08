@@ -46,7 +46,7 @@ std::vector<std::pair<int, int>> bfs(
 
 			if (nr >= 0 && nr < rows &&
 				nc >= 0 && nc < cols &&
-				grid[nr][nc] == 0 &&
+				grid[nr][nc] != 1 &&
 				!visited[nr][nc]){
 				
 				visited[nr][nc] = true;
@@ -135,8 +135,9 @@ std::vector<std::pair<int, int>> dijkstra(
 			int nr = row + dr[i];
 			int nc = col + dc[i];
 
-			if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] == 0) {
-				int newDist = distance + 1;
+			if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] != 1) {
+				int moveCost = (grid[nr][nc] == 2) ? 5 : 1;
+				int newDist = distance + moveCost;
 
 				if (newDist < dist[nr][nc]) {
 					dist [nr][nc] = newDist;
@@ -176,7 +177,9 @@ int main() {
 	const int COLS = 20;
 	const int OFFSET = 50;
 
-	//0= empty cell, 1=wall
+	//0= empty cell
+	// 1=wall
+	// 2 = weighted terrain (cost 5)
 	std::vector<std::vector<int>> grid(
 		ROWS, std::vector<int>(COLS, 0)
 	);	
@@ -187,7 +190,7 @@ int main() {
 	int endRow =12;
 	int endCol = 17;
 
-	//0= wall mode, 1 = start mode, 2 = end mode
+	//0= wall mode, 1 = start mode, 2 = end mode, 3 = weighted terrain
 	int mode = 0;
 	//0: BFS, 1=Dijkstra
 	int algorithm = 0;
@@ -224,6 +227,8 @@ int main() {
 				mode = 1;
 			} else if (key->code == sf::Keyboard::Key::E) {
 				mode = 2;
+			} else if (key->code == sf::Keyboard::Key::T) {
+				mode = 3;;
 			} else if (key->code == sf::Keyboard::Key::Space) {
 				visitedOrder.clear();
 				
@@ -276,10 +281,15 @@ int main() {
 								endCol = col;
 								grid[row][col]=0;
 							}
+						} else if (mode == 3) {
+							if (!((row == startRow && col == startCol) ||
+								(row == endRow && col == endCol))) {
+								grid[row][col] = (grid[row][col] == 2) ? 0 : 2;
+							}
 						} else {
 							if (!((row == startRow && col == startCol) ||
 								(row == endRow && col == endCol))) {
-								grid[row][col] = 1 - grid[row][col];
+								grid[row][col] = (grid[row][col] == 1) ? 0 : 1;
 							}
 						}
 					}
@@ -321,7 +331,6 @@ int main() {
 					cell.setFillColor(sf::Color(220, 70, 70));
 				} else if ( grid[row][col] == 1) {
 					cell.setFillColor(sf::Color(150, 160, 175));
-				
 				} else if (!isAnimating &&
 					std::find(path.begin(), path.end(),
 						std::make_pair(row, col)) != path.end()){
@@ -333,6 +342,8 @@ int main() {
 					) != visitedOrder.begin() + animationIndex) {
 					cell.setFillColor(sf::Color(65, 145, 220));
 
+				} else {
+					cell.setFillColor(sf::Color(185, 120, 55));
 				} else {
 					cell.setFillColor(sf::Color(45, 55, 75));
 				}
