@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <queue>
 
+//bfs
 std::vector<std::pair<int, int>> bfs(
 	const std::vector<std::vector<int>>& grid,
 	int startRow, int startCol,
@@ -77,6 +78,98 @@ std::vector<std::pair<int, int>> bfs(
 	return path;
 }
 
+//dijisktras alg 
+std::vector<std::pair<int, int>> dijkstra(
+	const std::vector<std::vector<int>>&grid,
+	int startRow, int startCol, 
+	int endRow, int endCol,
+	std::vector<std::pair<int, int>>& visitedOrder
+) {
+	int rows = grid.size();
+	int cols = grid[0].size();
+	
+	const int INF = std::numeric_limits<int>::max();
+
+	std::vector<std::vector<int>> dist(
+		rows, std::vector<int>(cols, INF)
+	);
+
+	std::vector<std::vector<std::pair<int, int>>> parent(
+		rows,
+		std::vector<std::pair<int, int>>(cols, {-1, -1})
+	);
+
+	//distance; row, col
+	using Node = std::pair<int, std::pair<int, int>>;
+
+	std::priority_queue<
+		Node,
+		std::vector<Node>,
+		std::greater<Node>
+	> pq;
+
+	dist[startRow][startCol] = 0;
+	pq.push({0, {startRow, startCol}});
+
+	int dr[] = {-1, 1, 0, 0};
+	int dc[] = {0, 0, -1, 1};
+
+	while (!pq.empty()) {
+		auto [distance, position] = pq.top();
+		pq.pop();
+
+		auto [row, col] = position;
+
+		//ignore outaded priorty queue entries 
+		if (distance != dist[row][col]) {
+			continue;
+		}
+
+		visitedOrder.push_back({row, col});
+
+		if (row == endRow && col == endCol) {
+			break;
+		}
+
+		for (int i=0; i<4; i++) {
+			int nr = row + dr[i];
+			int nc = col + dc[i];
+
+			if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] == 0) {
+				int newDist = distance + 1;
+
+				if (newDist < dist[nr][nc]) {
+					dist [nr][nc] = newDist;
+					parent[nr][nc] = {row, col};
+
+					pq.push({newDist, {nr, nc}});
+				}
+			}
+		}
+	}
+
+	std::vector<std::pair<int, int>> path;
+	
+	if (dist[endRow][endCol] == INF) {
+		return path;
+	}
+
+	int row = endRow;
+	int col = endCol;
+
+	while (row != startRow || col != startCol) {
+		path.push_back({row, col});
+
+		auto [pr, pc] = parent[row][col];
+		row = pr;
+		col = pc;
+	}
+
+	std::reverse(path.begin(), path.end());
+
+	return path;
+}
+
 int main() {
 	const int CELL_SIZE = 40;
 	const int ROWS = 15;
@@ -96,6 +189,8 @@ int main() {
 
 	//0= wall mode, 1 = start mode, 2 = end mode
 	int mode = 0;
+	//0: BFS, 1=Dijkstra
+	int algorithm = 0;
 	std::vector<std::pair<int, int>> path;	
 	std::vector<std::pair<int, int>> visitedOrder;
 
@@ -119,7 +214,11 @@ int main() {
 
 			if (const auto* key =
 				event->getIf<sf::Event::KeyPressed>()) {
-			if (key->code == sf::Keyboard::Key::W) {
+			if (key->code == sf::Keyboard::Key::B) {
+				algorithm = 0; // select BFS
+			} else if (key->code == sf::Keyboard::Key::D) {
+				algorithm = 1; //select Dijkstra
+			} else if (key->code == sf::Keyboard::Key::W) {
 				mode = 0;
 			} else if (key->code == sf::Keyboard::Key::S) {
 				mode = 1;
@@ -127,8 +226,13 @@ int main() {
 				mode = 2;
 			} else if (key->code == sf::Keyboard::Key::Space) {
 				visitedOrder.clear();
-				path = bfs(grid, startRow, startCol, endRow, endCol, visitedOrder);
 				
+				if (algorithm == 0) {
+					path = bfs(grid, startRow, startCol, endRow, endCol, visitedOrder);
+				} else if (algorithm == 1 ){
+					path = dijkstra(grid, startRow, startCol, endRow, endCol, visitedOrder);
+				}				
+	
 				animationIndex = 0;
 				isAnimating = true;
 				animationClock.restart();
